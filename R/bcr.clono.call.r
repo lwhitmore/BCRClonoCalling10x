@@ -36,6 +36,7 @@ BCR.CallClono.HD <- function(contig.list, seq="nt", V.gene=TRUE, CDR3=TRUE, J.ge
         return(c(1-value))
     }
 
+    #parse through options 
     if (!(seq %in% c("nt", "aa"))) {
         stop("ERROR: seq value needs to be aa and nt")
     }
@@ -130,7 +131,9 @@ BCR.CallClono.HD <- function(contig.list, seq="nt", V.gene=TRUE, CDR3=TRUE, J.ge
     }
     write.csv(totaldata, "totaltable.csv", quote=F, row.names=F)
 
+    #construct table 
     totaldatafinal <- build_data_table(totaldata)
+    #get sequence lengths 
     if (isTRUE(verbose)) {
         message("STATUS: get sequence length")
     }
@@ -177,6 +180,7 @@ BCR.CallClono.HD <- function(contig.list, seq="nt", V.gene=TRUE, CDR3=TRUE, J.ge
         totaldatafinal$totalvgene <- paste(totaldatafinal$v_gene,totaldatafinal$v_gene.light, sep="_")
     }
 
+    # map data on to all combinations 
     all_combinations <- all_combinations %>%
         mutate(seqlengthinterestbarcode1 = mapvalues(Var1,
             from = as.character(totaldatafinal$barcodev2),
@@ -233,6 +237,7 @@ BCR.CallClono.HD <- function(contig.list, seq="nt", V.gene=TRUE, CDR3=TRUE, J.ge
                 from = as.character(totaldatafinal$barcodev2),
                 to = as.character(totaldatafinal$genelength4alignment)))
     }
+    # filter out combinations of cells that are not the same length or the same gene call
     if(length(cdrseqs)==0) { 
         all_combinations$length.equal <- all_combinations$seqlengthinterestbarcode1 == all_combinations$seqlengthinterestbarcode2
         all_combinations$genecall <- all_combinations$totalvgenebarcode1 == all_combinations$totalvgenebarcode2 
@@ -249,9 +254,8 @@ BCR.CallClono.HD <- function(contig.list, seq="nt", V.gene=TRUE, CDR3=TRUE, J.ge
         all_combinations4hd <- all_combinations[(all_combinations$genelength.equal==TRUE & all_combinations$CDR3length.equal==TRUE & all_combinations$genecall==TRUE ),]
         all_combinations4hd_NA <- all_combinations[(all_combinations$genelength.equal!=TRUE | all_combinations$CDR3length.equal!=TRUE |all_combinations$genecall!=TRUE),]
         all_combinations4hd_NA$hd <- rep(NA, nrow(all_combinations4hd_NA))
-
     }
-    
+    #calculate subsetted hamming distances for sequences that are the same length and have the same gene calls
     if (isTRUE(verbose)) {
         message(paste0("STATUS: calculating hamming distance for ", nrow(all_combinations4hd), " combinations"))
     }
@@ -273,9 +277,11 @@ BCR.CallClono.HD <- function(contig.list, seq="nt", V.gene=TRUE, CDR3=TRUE, J.ge
     rownames(dffinal) <- dffinal$Var1
     dffinal$Var1 <- NULL
 
+    # output complete hamming distancematrix 
     dffinal <- dffinal[order(rownames(dffinal)), order(colnames(dffinal))]
     write.csv(dffinal, file.path(results_folder, "hammingdistancesmatrix.csv"), quote=FALSE)
 
+    #generate hamming distance distance matrix plot 
     if (isTRUE(cluster.plot)) {
         if(isTRUE(verbose)) {
             message("STATUS: Generating hamming distance cluster plot")
@@ -292,36 +298,28 @@ BCR.CallClono.HD <- function(contig.list, seq="nt", V.gene=TRUE, CDR3=TRUE, J.ge
         dffinal[b,b] <- NA
     }
 
+    # generate graph
     dffinal[is.na(dffinal)] <- 0
     dffinalthreshmatrix <- as.matrix(as.data.frame(dffinal))
     dffinalthreshmatrix[dffinalthreshmatrix<hammingthreshold] <- 0
     adj_matrix <- dffinalthreshmatrix
     diag(adj_matrix) <- 0 # Ensure no self-loops
     g <- graph_from_adjacency_matrix(adj_matrix, diag=FALSE, mode = "undirected", weighted = TRUE)
-    png("graph.png",width=8, height=8, units="in", res=500)
-    plot(g,
-            vertex.label = NA, #V(g)$name, # Use entity names as labels
-            vertex.size = 1, 
-            vertex.color = "skyblue",
-            edge.width = E(g)$weight,
-            edge.color = "black")
-    dev.off()
-
-    clusters <- components(g)
-    cluster_membership <- igraph::membership(clusters)
-    print(length(unique(cluster_membership)))
-
-    if (isTRUE(graph.plot)) {
-        png("graphconnected.png",width=8, height=8, units="in", res=500)
-        plot(connected_g,
+    if(isTRUE(graph.plot)) {
+        png(file.path(results_folder, "graph.png"),width=8, height=8, units="in", res=500)
+        plot(g,
                 vertex.label = NA, #V(g)$name, # Use entity names as labels
-                vertex.size = 1,
+                vertex.size = 1, 
                 vertex.color = "skyblue",
-                edge.width = E(connected_g)$weight,
+                edge.width = E(g)$weight,
                 edge.color = "black")
         dev.off()
     }
-    
+
+    # call clonotypes by grouping all connnected nodes (edges are kept with all hamming distances above hamming thresholds)
+    clusters <- components(g)
+    cluster_membership <- igraph::membership(clusters)
+
     # Print the edge IDs
    hammingdistclonotypes <- as.data.frame(cluster_membership)
 
@@ -361,7 +359,7 @@ BCR.CallClono.HD <- function(contig.list, seq="nt", V.gene=TRUE, CDR3=TRUE, J.ge
     tmppivot <- tmppivot[rev(order(tmppivot$sum)),]
     write.csv(tmppivot, file.path(results_folder, "clonotypecount.csv"), quote=FALSE)
     write.csv(clonotypeswithseqs,file.path(results_folder, "clonotypeCDR3sequences.csv"), quote=FALSE,row.names=FALSE)
-   return(contig.list_final)
+   return(list("graph"=g, "BCRclonotypes"=contig.list_final))
 }
 
 
