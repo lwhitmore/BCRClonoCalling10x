@@ -11,7 +11,7 @@
 #' @param cluster.plot output hamming distance matrix plot 
 #' @param graph.plot output graph plot with hamming distance 
 #' @param results_folder directory to output information to (default is getwd()), verbose=TRUE whether to save figures in PDF and PNG file format
-#' @param verbose print messages (default is TRUE)
+#' @param verbose print messages (default is FALSE)
 #' @export
 #' @import e1071
 #' @import stringr

@@ -39,7 +39,7 @@ BCR.CallClono.HD(
 
 \item{results_folder}{directory to output information to (default is getwd()), verbose=TRUE whether to save figures in PDF and PNG file format}
 
-\item{verbose}{print messages (default is TRUE)}
+\item{verbose}{print messages (default is FALSE)}
 }
 \description{
 Makes clonotype calls on 10x data using the hamming distance calls
