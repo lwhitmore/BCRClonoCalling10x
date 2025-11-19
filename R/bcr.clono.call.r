@@ -16,6 +16,7 @@
 #' @import e1071
 #' @import stringr
 #' @import dplyr
+#' @import plyr
 #' @import data.table
 #' @import ComplexHeatmap
 #' @import circlize
