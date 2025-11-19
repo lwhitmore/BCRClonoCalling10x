@@ -183,58 +183,58 @@ BCR.CallClono.HD <- function(contig.list, seq="nt", V.gene=TRUE, CDR3=TRUE, J.ge
 
     # map data on to all combinations 
     all_combinations <- all_combinations %>%
-        mutate(seqlengthinterestbarcode1 = mapvalues(Var1,
+        mutate(seqlengthinterestbarcode1 = plyr::mapvalues(Var1,
             from = as.character(totaldatafinal$barcodev2),
             to = as.character(totaldatafinal$length4alignment)))
     all_combinations <- all_combinations %>%
-        mutate(seqinterestbarcode1 = mapvalues(Var1,
+        mutate(seqinterestbarcode1 = plyr::mapvalues(Var1,
             from = as.character(totaldatafinal$barcodev2),
             to = as.character(totaldatafinal$seqofinterest)))
     all_combinations <- all_combinations %>%
-        mutate(totalvgenebarcode1 = mapvalues(Var1,
+        mutate(totalvgenebarcode1 = plyr::mapvalues(Var1,
             from = as.character(totaldatafinal$barcodev2),
             to = as.character(totaldatafinal$totalvgene)))
     if (length(cdrseqs)>0) {
         all_combinations <- all_combinations %>%
-            mutate(cdr3lengthbarcode1 = mapvalues(Var1,
+            mutate(cdr3lengthbarcode1 = plyr::mapvalues(Var1,
                 from = as.character(totaldatafinal$barcodev2),
                 to = as.character(totaldatafinal$cdr3length4alignment)))
         all_combinations <- all_combinations %>%
-            mutate(cdr3seqbarcode1 = mapvalues(Var1,
+            mutate(cdr3seqbarcode1 = plyr::mapvalues(Var1,
                 from = as.character(totaldatafinal$barcodev2),
                 to = as.character(totaldatafinal$cdr3seqofinterest)))
     }
     if (length(geneseqs)>0) {
         all_combinations <- all_combinations %>%
-            mutate(genelengthbarcode1 = mapvalues(Var1,
+            mutate(genelengthbarcode1 = plyr::mapvalues(Var1,
                 from = as.character(totaldatafinal$barcodev2),
                 to = as.character(totaldatafinal$genelength4alignment)))
     }
     all_combinations <- all_combinations %>%
-        mutate(seqlengthinterestbarcode2 = mapvalues(Var2,
+        mutate(seqlengthinterestbarcode2 = plyr::mapvalues(Var2,
             from = as.character(totaldatafinal$barcodev2),
             to = as.character(totaldatafinal$length4alignment)))
     all_combinations <- all_combinations %>%
-        mutate(seqinterestbarcode2 = mapvalues(Var2,
+        mutate(seqinterestbarcode2 = plyr::mapvalues(Var2,
             from = as.character(totaldatafinal$barcodev2),
             to = as.character(totaldatafinal$seqofinterest)))
     all_combinations <- all_combinations %>%
-        mutate(totalvgenebarcode2 = mapvalues(Var2,
+        mutate(totalvgenebarcode2 = plyr::mapvalues(Var2,
             from = as.character(totaldatafinal$barcodev2),
             to = as.character(totaldatafinal$totalvgene)))
     if (length(cdrseqs)>0) {
         all_combinations <- all_combinations %>%
-            mutate(cdr3lengthbarcode2 = mapvalues(Var2,
+            mutate(cdr3lengthbarcode2 = plyr::mapvalues(Var2,
                 from = as.character(totaldatafinal$barcodev2),
                 to = as.character(totaldatafinal$cdr3length4alignment)))
         all_combinations <- all_combinations %>%
-            mutate(cdr3seqbarcode2 = mapvalues(Var2,
+            mutate(cdr3seqbarcode2 = plyr::mapvalues(Var2,
                 from = as.character(totaldatafinal$barcodev2),
                 to = as.character(totaldatafinal$cdr3seqofinterest)))
     } 
     if (length(geneseqs)>0) {
         all_combinations <- all_combinations %>%
-            mutate(genelengthbarcode2 = mapvalues(Var2,
+            mutate(genelengthbarcode2 = plyr::mapvalues(Var2,
                 from = as.character(totaldatafinal$barcodev2),
                 to = as.character(totaldatafinal$genelength4alignment)))
     }
