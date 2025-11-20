@@ -20,13 +20,15 @@
 #' @import data.table
 #' @import ComplexHeatmap
 #' @import circlize
+#' @import grid
 #' @import igraph
 #' @examples
 #' contig.list <- CallClonoHD(contig.listFromCellRanger)
 #' 
 
 BCR.CallClono.HD <- function(contig.list, seq="nt", V.gene=TRUE, CDR3=TRUE, J.gene=FALSE, chain="both",
-     hammingthreshold=0.7, cluster.plot=TRUE, graph.plot=FALSE, results_folder=getwd(), verbose=FALSE) {
+     hammingthreshold=0.7, CDR3threshwithFullGene=FALSE, cluster.plot=TRUE,
+     graph.plot=FALSE, results_folder=getwd(), verbose=FALSE) {
 
     calculate_hamming_distance <-function(x) {#, all_combinationstmp, totaldatafinal, seqofinterest ) {
         seq1 <-unlist(strsplit(x[[1]], split=""))
@@ -108,7 +110,7 @@ BCR.CallClono.HD <- function(contig.list, seq="nt", V.gene=TRUE, CDR3=TRUE, J.ge
             }
             if (isTRUE(CDR3)) {
                 seqofinterest <- c(seqofinterest, c("cdr3.light"))
-                cdrseqs <- c(cdrseqs,  c("cdr3"))
+                cdrseqs <- c(cdrseqs,  c("cdr3.light"))
             }
         }
     }
@@ -175,11 +177,14 @@ BCR.CallClono.HD <- function(contig.list, seq="nt", V.gene=TRUE, CDR3=TRUE, J.ge
         message("STATUS: reducing hamming distance calculations based on equal lengths")
     }
     
-    if (isTRUE(J.gene)) {
+    if (isTRUE(J.gene) || isTRUE(CDR3threshwithFullGene)) {
+        print("adding all genes")
         totaldatafinal$totalvgene <- paste(totaldatafinal$v_gene,totaldatafinal$v_gene.light,totaldatafinal$j_gene,totaldatafinal$j_gene.light, sep="_")
     } else {
         totaldatafinal$totalvgene <- paste(totaldatafinal$v_gene,totaldatafinal$v_gene.light, sep="_")
     }
+
+    x<- plyr::mapvalues(all_combinations$Var1,  as.character(totaldatafinal$barcodev2),totaldatafinal[,"cdr3"])
 
     # map data on to all combinations 
     all_combinations <- all_combinations %>%
@@ -247,13 +252,19 @@ BCR.CallClono.HD <- function(contig.list, seq="nt", V.gene=TRUE, CDR3=TRUE, J.ge
         all_combinations4hd_NA <- all_combinations[(all_combinations$length.equal==FALSE | all_combinations$genecall==FALSE),]
         all_combinations4hd_NA$hd <- rep(NA, nrow(all_combinations4hd_NA))
 
-    } else if ((length(cdrseqs)>0 & length(geneseqs)>0)) {
+    } else if ((length(cdrseqs)>0 & length(geneseqs)>0) & isFALSE(CDR3threshwithFullGene)) {
         all_combinations$genelength.equal <- all_combinations$genelengthbarcode1 == all_combinations$genelengthbarcode2
         all_combinations$CDR3length.equal <- all_combinations$cdr3lengthbarcode1 == all_combinations$cdr3lengthbarcode2
         all_combinations$genecall <- all_combinations$totalvgenebarcode1 == all_combinations$totalvgenebarcode2
 
         all_combinations4hd <- all_combinations[(all_combinations$genelength.equal==TRUE & all_combinations$CDR3length.equal==TRUE & all_combinations$genecall==TRUE ),]
         all_combinations4hd_NA <- all_combinations[(all_combinations$genelength.equal!=TRUE | all_combinations$CDR3length.equal!=TRUE |all_combinations$genecall!=TRUE),]
+        all_combinations4hd_NA$hd <- rep(NA, nrow(all_combinations4hd_NA))
+    } else if((length(cdrseqs)>0 & (length(geneseqs)==0)) || isTRUE(CDR3threshwithFullGene)) {
+        all_combinations$CDR3length.equal <- all_combinations$cdr3lengthbarcode1 == all_combinations$cdr3lengthbarcode2
+        all_combinations$genecall <- all_combinations$totalvgenebarcode1 == all_combinations$totalvgenebarcode2
+        all_combinations4hd <- all_combinations[(all_combinations$CDR3length.equal==TRUE & all_combinations$genecall==TRUE ),]
+        all_combinations4hd_NA <- all_combinations[(all_combinations$CDR3length.equal!=TRUE |all_combinations$genecall!=TRUE),]
         all_combinations4hd_NA$hd <- rep(NA, nrow(all_combinations4hd_NA))
     }
     #calculate subsetted hamming distances for sequences that are the same length and have the same gene calls
@@ -328,11 +339,11 @@ BCR.CallClono.HD <- function(contig.list, seq="nt", V.gene=TRUE, CDR3=TRUE, J.ge
    finalresults <- merge(totaldatafinal, hammingdistclonotypes, by.x="barcodev2", by.y="row.names")
    print(paste0("STATUS: number of unique clonotypes is ", length(unique(finalresults$hd.clonotypes))))
    contig.list_final <- split( finalresults , f = finalresults$sample_individual )
+    finalresults$CDR3.heavy_light.seq <- paste(finalresults$cdr3, finalresults$cdr3.light, sep="_")
    write.csv(finalresults, file.path(results_folder, "finalresults.csv"), quote=FALSE, row.names=FALSE)
 
     dfvdjcounts <- finalresults  %>% group_by(sample_individual, hd.clonotypes) %>%
     dplyr::summarise(count = n())
-    finalresults$CDR3.heavy_light.seq <- paste(finalresults$cdr3, finalresults$cdr3.light, sep="_")
     clonotypeswithseqs <- finalresults  %>% group_by(hd.clonotypes, CDR3.heavy_light.seq) %>%
     dplyr::summarise(count = n())
     clonotypeswithseqs <- as.data.frame(clonotypeswithseqs)
@@ -382,9 +393,9 @@ hamming_dist_cluster_plot <- function(dffinal, results_folder) {
         cluster_column_slices = FALSE,
         border = F,
         heatmap_legend_param = list(
-            legend_height = unit(3, "cm"),
-            labels_gp = gpar(fontsize = 10),
-            title_gp = gpar(fontsize = 10, fontface = "bold")
+            legend_height = grid::unit(3, "cm"),
+            labels_gp = grid::gpar(fontsize = 10),
+            title_gp = grid::gpar(fontsize = 10, fontface = "bold")
         ), use_raster = TRUE,  raster_quality = 5
     )
     png(file.path(results_folder, "hammingdist.png"), width = 8, height = 8, units = "in", res = 400)
