@@ -28,8 +28,7 @@
 #' 
 
 BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=TRUE, CDR3=TRUE, J.gene=FALSE, chain="both",
-     hammingthreshold=0.7, CDR3threshwithFullGene=FALSE, cluster.plot=TRUE,
-     graph.plot=FALSE, results_folder=getwd(), verbose=FALSE) {
+     hammingthreshold=0.7, cluster.plot=TRUE,graph.plot=FALSE, results_folder=getwd(), verbose=FALSE) {
 
     calculate_hamming_distance <-function(x) {#, all_combinationstmp, totaldatafinal, seqofinterest ) {
         seq1 <-unlist(strsplit(x[[1]], split=""))
@@ -150,8 +149,7 @@ BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=TRUE, CDR3=TRUE, J.ge
         message("STATUS: reducing hamming distance calculations based on equal lengths")
     }
     
-    if (isTRUE(J.gene) || isTRUE(CDR3threshwithFullGene)) {
-        print("adding all genes")
+    if (isTRUE(J.gene)) {
         totaldatafinal$totalvgene <- paste(totaldatafinal$v_gene,totaldatafinal$v_gene.light,totaldatafinal$j_gene,totaldatafinal$j_gene.light, sep="_")
     } else {
         totaldatafinal$totalvgene <- paste(totaldatafinal$v_gene,totaldatafinal$v_gene.light, sep="_")

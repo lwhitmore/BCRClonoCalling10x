@@ -18,8 +18,8 @@ library(BCRClonoCalling10x)
 --------------------------------
 
 ```R 
-BCR.CallClono.HD(contig.list,  seq="nt", V.gene=TRUE, CDR3=TRUE, J.gene=FALSE, chain="both",
-     hammingthreshold=0.7, cluster.plot=TRUE, graph.plot=FALSE, results_folder=getwd(), verbose=FALSE)
+BCR.CallClono.HD(contig.list,   seq="aa", V.gene=TRUE, CDR3=TRUE, J.gene=FALSE, chain="both",
+     hammingthreshold=0.7, cluster.plot=TRUE,graph.plot=FALSE, results_folder=getwd(), verbose=FALSE)
 ```
 
 * contig.list = R list of VDJ sequences from cell ranger 
