@@ -11,6 +11,6 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 Depends: R (>= 4.1)
 biocViews: Software
-Imports: data.table, plyr, dplyr, stringr, e1071, igraph, ComplexHeatmap, circlize
+Imports: data.table, plyr, dplyr, stringr, e1071, igraph, ComplexHeatmap, circlize, grid, RcppAlgos
 Suggests: magick
 LazyData: true

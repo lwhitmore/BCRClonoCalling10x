@@ -22,11 +22,12 @@
 #' @import circlize
 #' @import grid
 #' @import igraph
+#' @import RcppAlgos
 #' @examples
 #' contig.list <- CallClonoHD(contig.listFromCellRanger)
 #' 
 
-BCR.CallClono.HD <- function(contig.list, seq="nt", V.gene=TRUE, CDR3=TRUE, J.gene=FALSE, chain="both",
+BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=TRUE, CDR3=TRUE, J.gene=FALSE, chain="both",
      hammingthreshold=0.7, CDR3threshwithFullGene=FALSE, cluster.plot=TRUE,
      graph.plot=FALSE, results_folder=getwd(), verbose=FALSE) {
 
@@ -136,41 +137,13 @@ BCR.CallClono.HD <- function(contig.list, seq="nt", V.gene=TRUE, CDR3=TRUE, J.ge
 
     #construct table 
     totaldatafinal <- build_data_table(totaldata)
-    #get sequence lengths 
-    if (isTRUE(verbose)) {
-        message("STATUS: get sequence length")
-    }
-    x <- c()
-    x2 <- c()
-    x3 <- c()
-    x4 <- c()
-    x5 <- c()
-    for (i in rownames(totaldatafinal)) {
-        x <-c(x, nchar(paste(totaldatafinal[i,seqofinterest], collapse = "")))
-        x2 <-c(x2, paste(totaldatafinal[i,seqofinterest], collapse = ""))
-        if (length(cdrseqs)>0) {
-            x3 <- c(x3, nchar(paste(totaldatafinal[i,cdrseqs], collapse = "")))
-            x4 <-c(x4, paste(totaldatafinal[i,cdrseqs], collapse = ""))
-        }
-        if (length(geneseqs)>0) {
-            x5 <- c(x5, nchar(paste(totaldatafinal[i,geneseqs], collapse = "")))
-        }
-    }
-    totaldatafinal$length4alignment <- x
-    totaldatafinal$seqofinterest <- x2
-    if (length(cdrseqs)>0) {
-        totaldatafinal$cdr3length4alignment <- x3
-        totaldatafinal$cdr3seqofinterest <- x4
-    }
-    if (length(geneseqs)>0) {
-        totaldatafinal$genelength4alignment <- x5
-    }
 
     if (isTRUE(verbose)) {
         message("STATUS: get combinations of barcodes to calculate hamming distance")
     }
+    all_combinations <- comboGrid(totaldatafinal$barcodev2, totaldatafinal$barcodev2, repetition = T)
     # all_combinations <- comboGrid(totaldatafinal$barcodev2, totaldatafinal$barcodev2, repetition = F)
-    all_combinations <- expand.grid(totaldatafinal$barcodev2, totaldatafinal$barcodev2)
+    # all_combinations <- expand.grid(totaldatafinal$barcodev2, totaldatafinal$barcodev2)
     all_combinations <- as.data.frame(all_combinations)
 
     if (isTRUE(verbose)) {
@@ -183,108 +156,77 @@ BCR.CallClono.HD <- function(contig.list, seq="nt", V.gene=TRUE, CDR3=TRUE, J.ge
     } else {
         totaldatafinal$totalvgene <- paste(totaldatafinal$v_gene,totaldatafinal$v_gene.light, sep="_")
     }
-
-    x<- plyr::mapvalues(all_combinations$Var1,  as.character(totaldatafinal$barcodev2),totaldatafinal[,"cdr3"])
-
-    # map data on to all combinations 
-    all_combinations <- all_combinations %>%
-        mutate(seqlengthinterestbarcode1 = plyr::mapvalues(Var1,
-            from = as.character(totaldatafinal$barcodev2),
-            to = as.character(totaldatafinal$length4alignment)))
-    all_combinations <- all_combinations %>%
-        mutate(seqinterestbarcode1 = plyr::mapvalues(Var1,
-            from = as.character(totaldatafinal$barcodev2),
-            to = as.character(totaldatafinal$seqofinterest)))
-    all_combinations <- all_combinations %>%
-        mutate(totalvgenebarcode1 = plyr::mapvalues(Var1,
-            from = as.character(totaldatafinal$barcodev2),
-            to = as.character(totaldatafinal$totalvgene)))
+    
+    x<- plyr::mapvalues(all_combinations$Var1,  as.character(totaldatafinal$barcodev2),totaldatafinal[,"totalvgene"])
+    all_combinations[,"totalgene.barcode1"] <- x
+    x<- plyr::mapvalues(all_combinations$Var2,  as.character(totaldatafinal$barcodev2),totaldatafinal[,"totalvgene"])
+    all_combinations[,"totalgene.barcode2"] <- x
+    calls <- c()
     if (length(cdrseqs)>0) {
-        all_combinations <- all_combinations %>%
-            mutate(cdr3lengthbarcode1 = plyr::mapvalues(Var1,
-                from = as.character(totaldatafinal$barcodev2),
-                to = as.character(totaldatafinal$cdr3length4alignment)))
-        all_combinations <- all_combinations %>%
-            mutate(cdr3seqbarcode1 = plyr::mapvalues(Var1,
-                from = as.character(totaldatafinal$barcodev2),
-                to = as.character(totaldatafinal$cdr3seqofinterest)))
-    }
-    if (length(geneseqs)>0) {
-        all_combinations <- all_combinations %>%
-            mutate(genelengthbarcode1 = plyr::mapvalues(Var1,
-                from = as.character(totaldatafinal$barcodev2),
-                to = as.character(totaldatafinal$genelength4alignment)))
-    }
-    all_combinations <- all_combinations %>%
-        mutate(seqlengthinterestbarcode2 = plyr::mapvalues(Var2,
-            from = as.character(totaldatafinal$barcodev2),
-            to = as.character(totaldatafinal$length4alignment)))
-    all_combinations <- all_combinations %>%
-        mutate(seqinterestbarcode2 = plyr::mapvalues(Var2,
-            from = as.character(totaldatafinal$barcodev2),
-            to = as.character(totaldatafinal$seqofinterest)))
-    all_combinations <- all_combinations %>%
-        mutate(totalvgenebarcode2 = plyr::mapvalues(Var2,
-            from = as.character(totaldatafinal$barcodev2),
-            to = as.character(totaldatafinal$totalvgene)))
-    if (length(cdrseqs)>0) {
-        all_combinations <- all_combinations %>%
-            mutate(cdr3lengthbarcode2 = plyr::mapvalues(Var2,
-                from = as.character(totaldatafinal$barcodev2),
-                to = as.character(totaldatafinal$cdr3length4alignment)))
-        all_combinations <- all_combinations %>%
-            mutate(cdr3seqbarcode2 = plyr::mapvalues(Var2,
-                from = as.character(totaldatafinal$barcodev2),
-                to = as.character(totaldatafinal$cdr3seqofinterest)))
+        for (c in cdrseqs) {
+            x<- plyr::mapvalues(all_combinations$Var1,  as.character(totaldatafinal$barcodev2),totaldatafinal[,c])
+            all_combinations[,paste0(c,".barcode1")] <- x
+            all_combinations[,paste0(c,".barcode1.length")] <- nchar(as.character(x))
+            x<- plyr::mapvalues(all_combinations$Var2,  as.character(totaldatafinal$barcodev2),totaldatafinal[,c])
+            all_combinations[,paste0(c,".barcode2")] <- x
+            all_combinations[,paste0(c,".barcode2.length")] <- nchar(as.character(x))
+            all_combinations[, paste0(c, "lengthcall")] = all_combinations[,paste0(c,".barcode1.length")]==all_combinations[,paste0(c,".barcode2.length")]
+            calls <- c(calls,paste0(c, "lengthcall") )
+        }
     } 
     if (length(geneseqs)>0) {
-        all_combinations <- all_combinations %>%
-            mutate(genelengthbarcode2 = plyr::mapvalues(Var2,
-                from = as.character(totaldatafinal$barcodev2),
-                to = as.character(totaldatafinal$genelength4alignment)))
+        for (g in geneseqs) {
+            x<- plyr::mapvalues(all_combinations$Var1,  as.character(totaldatafinal$barcodev2),totaldatafinal[,g])
+            all_combinations[,paste0(g,".barcode1")] <- x
+            all_combinations[,paste0(g,".barcode1.length")] <- nchar(as.character(x))
+            x<- plyr::mapvalues(all_combinations$Var2,  as.character(totaldatafinal$barcodev2),totaldatafinal[,g])
+            all_combinations[,paste0(g,".barcode2")] <- x
+            all_combinations[,paste0(g,".barcode2.length")] <- nchar(as.character(x))
+            all_combinations[, paste0(g, "lengthcall")] = all_combinations[,paste0(g,".barcode1.length")]==all_combinations[,paste0(g,".barcode2.length")]
+            calls <- c(calls,paste0(g, "lengthcall") )
+        }
     }
-    # filter out combinations of cells that are not the same length or the same gene call
-    if(length(cdrseqs)==0) { 
-        all_combinations$length.equal <- all_combinations$seqlengthinterestbarcode1 == all_combinations$seqlengthinterestbarcode2
-        all_combinations$genecall <- all_combinations$totalvgenebarcode1 == all_combinations$totalvgenebarcode2 
-        all_combinations4hd <- all_combinations[(all_combinations$length.equal==TRUE  & all_combinations$genecall==TRUE),]
+   all_combinations$genecall <- all_combinations$totalgene.barcode1==all_combinations$totalgene.barcode2
+   calls <- c(calls, "genecall")
+   all_combinations$all_true_row <- apply(all_combinations[,calls ], 1, all)
+   all_combinations4hd <- all_combinations[(all_combinations$all_true_row==TRUE),]
+   all_combinations4hd_NA <- all_combinations[(all_combinations$all_true_row==FALSE),]
 
-        all_combinations4hd_NA <- all_combinations[(all_combinations$length.equal==FALSE | all_combinations$genecall==FALSE),]
-        all_combinations4hd_NA$hd <- rep(NA, nrow(all_combinations4hd_NA))
+    thresholds <- c()
+    if (length(cdrseqs)>0) {
+        for (c in cdrseqs) {
+            if (isTRUE(verbose)) {
+                message("STATUS: Calculating hamming distance for ",c)
+            }
+            totalhd = apply(all_combinations4hd[c(paste0(c,".barcode1"), paste0(c,".barcode2"))], 1, calculate_hamming_distance)
+            all_combinations4hd[, paste0(c,".hd")] <- totalhd
+            thresholds <- c(thresholds,paste0(c,".hd") )
+        }
+    }
 
-    } else if ((length(cdrseqs)>0 & length(geneseqs)>0) & isFALSE(CDR3threshwithFullGene)) {
-        all_combinations$genelength.equal <- all_combinations$genelengthbarcode1 == all_combinations$genelengthbarcode2
-        all_combinations$CDR3length.equal <- all_combinations$cdr3lengthbarcode1 == all_combinations$cdr3lengthbarcode2
-        all_combinations$genecall <- all_combinations$totalvgenebarcode1 == all_combinations$totalvgenebarcode2
-
-        all_combinations4hd <- all_combinations[(all_combinations$genelength.equal==TRUE & all_combinations$CDR3length.equal==TRUE & all_combinations$genecall==TRUE ),]
-        all_combinations4hd_NA <- all_combinations[(all_combinations$genelength.equal!=TRUE | all_combinations$CDR3length.equal!=TRUE |all_combinations$genecall!=TRUE),]
-        all_combinations4hd_NA$hd <- rep(NA, nrow(all_combinations4hd_NA))
-    } else if((length(cdrseqs)>0 & (length(geneseqs)==0)) || isTRUE(CDR3threshwithFullGene)) {
-        all_combinations$CDR3length.equal <- all_combinations$cdr3lengthbarcode1 == all_combinations$cdr3lengthbarcode2
-        all_combinations$genecall <- all_combinations$totalvgenebarcode1 == all_combinations$totalvgenebarcode2
-        all_combinations4hd <- all_combinations[(all_combinations$CDR3length.equal==TRUE & all_combinations$genecall==TRUE ),]
-        all_combinations4hd_NA <- all_combinations[(all_combinations$CDR3length.equal!=TRUE |all_combinations$genecall!=TRUE),]
-        all_combinations4hd_NA$hd <- rep(NA, nrow(all_combinations4hd_NA))
+    if (length(geneseqs)>0) {
+        for (g in geneseqs) {
+            if (isTRUE(verbose)) {
+                message("STATUS: Calculating hamming distance for ",g)
+            }
+            totalhd = apply(all_combinations4hd[c(paste0(g,".barcode1"), paste0(g,".barcode2"))], 1, calculate_hamming_distance)
+            all_combinations4hd[, paste0(g,".hd")] <- totalhd
+            thresholds <- c(thresholds,paste0(c,".hd") )
+        }
     }
-    #calculate subsetted hamming distances for sequences that are the same length and have the same gene calls
-    if (isTRUE(verbose)) {
-        message(paste0("STATUS: calculating hamming distance for ", nrow(all_combinations4hd), " combinations"))
-    }
-    start.time <- Sys.time()
-    totalhd = apply(all_combinations4hd[c("seqinterestbarcode1", "seqinterestbarcode2")], 1, calculate_hamming_distance)
-    end.time <- Sys.time()
-    time.taken <- end.time - start.time
-    if (isTRUE(verbose)) {
-        message("STATUS: ", round(time.taken, 2), " time taken for hamming distances")
-    }
-    all_combinations4hd$hd <- totalhd
     write.csv(all_combinations4hd, file.path(results_folder, "hammingdistances.csv"), quote=FALSE)
-    
-    all_combinations4hdtotal <- rbind(all_combinations4hd, all_combinations4hd_NA)
-    all_combinations4hdtotal$genecall <- all_combinations4hdtotal$totalvgenebarcode1 == all_combinations4hdtotal$totalvgenebarcode2
-    all_combinations4hdtotal[all_combinations4hdtotal$genecall==FALSE, "hd"] <- 0
-    dffinal <- dcast(data.table(all_combinations4hdtotal), Var1 ~ Var2, value.var="hd")
+
+    all_combinations4hd_abovethresh <- all_combinations4hd[apply(all_combinations4hd[thresholds] > hammingthreshold, 1, all), ]
+    final.hd <- rowMeans(all_combinations4hd[rownames(all_combinations4hd_abovethresh), thresholds ])
+    all_comb_final <- cbind(all_combinations4hd_abovethresh[,c("Var1", "Var2")], final.hd )
+    tmp <- all_combinations4hd[!(rownames(all_combinations4hd) %in% rownames(all_combinations4hd_abovethresh)),c("Var1", "Var2")]
+    tmp$final.hd <- rep(NA, nrow(tmp))
+    all_comb_final <- rbind(all_comb_final, tmp)
+    tmp <- cbind(all_combinations4hd_NA[,c("Var1", "Var2")],rep(NA, nrow(all_combinations4hd_NA)))
+    colnames(tmp)[3] <- "final.hd"
+    all_comb_final <- rbind(all_comb_final, tmp)
+
+    dffinal <- dcast(data.table(all_comb_final), Var1 ~ Var2, value.var="final.hd")
     dffinal <- as.data.frame(dffinal)
     rownames(dffinal) <- dffinal$Var1
     dffinal$Var1 <- NULL
@@ -312,10 +254,8 @@ BCR.CallClono.HD <- function(contig.list, seq="nt", V.gene=TRUE, CDR3=TRUE, J.ge
 
     # generate graph
     dffinal[is.na(dffinal)] <- 0
-    dffinalthreshmatrix <- as.matrix(as.data.frame(dffinal))
-    dffinalthreshmatrix[dffinalthreshmatrix<hammingthreshold] <- 0
-    adj_matrix <- dffinalthreshmatrix
-    diag(adj_matrix) <- 0 # Ensure no self-loops
+    adj_matrix <- as.matrix(as.data.frame(dffinal))
+
     g <- graph_from_adjacency_matrix(adj_matrix, diag=FALSE, mode = "undirected", weighted = TRUE)
     if(isTRUE(graph.plot)) {
         png(file.path(results_folder, "graph.png"),width=8, height=8, units="in", res=500)

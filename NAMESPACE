@@ -2,9 +2,12 @@
 
 export(BCR.CallClono.HD)
 import(ComplexHeatmap)
+import(RcppAlgos)
 import(circlize)
 import(data.table)
 import(dplyr)
 import(e1071)
+import(grid)
 import(igraph)
+import(plyr)
 import(stringr)
