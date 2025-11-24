@@ -46,6 +46,8 @@ BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=TRUE, CDR3=TRUE, J.ge
     if (!(chain %in% c("heavy", "light", "both"))) {
         stop("ERROR: chain value needs to be heavy, light, or both")
     }
+
+    # assign sequences to vector that we are interested in looking at 
     cdrseqs <- c()
     seqofinterest <- c()
     geneseqs <- c()
@@ -114,7 +116,7 @@ BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=TRUE, CDR3=TRUE, J.ge
             }
         }
     }
-
+    # compile all filtered tables into one table 
     totaldata <- c()
     for (n in names(contig.list)) {
         contig.list[[n]]$barcodev2 <- paste(n, contig.list[[n]]$barcode, sep="_")
@@ -134,15 +136,15 @@ BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=TRUE, CDR3=TRUE, J.ge
     }
     write.csv(totaldata, "totaltable.csv", quote=F, row.names=F)
 
-    #construct table 
+    #construct final table 
     totaldatafinal <- build_data_table(totaldata)
 
     if (isTRUE(verbose)) {
         message("STATUS: get combinations of barcodes to calculate hamming distance")
     }
+
+    # generate all combinations of cells 
     all_combinations <- comboGrid(totaldatafinal$barcodev2, totaldatafinal$barcodev2, repetition = T)
-    # all_combinations <- comboGrid(totaldatafinal$barcodev2, totaldatafinal$barcodev2, repetition = F)
-    # all_combinations <- expand.grid(totaldatafinal$barcodev2, totaldatafinal$barcodev2)
     all_combinations <- as.data.frame(all_combinations)
 
     if (isTRUE(verbose)) {
@@ -155,6 +157,7 @@ BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=TRUE, CDR3=TRUE, J.ge
         totaldatafinal$totalvgene <- paste(totaldatafinal$v_gene,totaldatafinal$v_gene.light, sep="_")
     }
     
+    # map necessary information onto all combinations data frame 
     x<- plyr::mapvalues(all_combinations$Var1,  as.character(totaldatafinal$barcodev2),totaldatafinal[,"totalvgene"])
     all_combinations[,"totalgene.barcode1"] <- x
     x<- plyr::mapvalues(all_combinations$Var2,  as.character(totaldatafinal$barcodev2),totaldatafinal[,"totalvgene"])
@@ -184,12 +187,15 @@ BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=TRUE, CDR3=TRUE, J.ge
             calls <- c(calls,paste0(g, "lengthcall") )
         }
     }
+
+   # extract combinations that need to have hamming distance calculated for 
    all_combinations$genecall <- all_combinations$totalgene.barcode1==all_combinations$totalgene.barcode2
    calls <- c(calls, "genecall")
    all_combinations$all_true_row <- apply(all_combinations[,calls ], 1, all)
    all_combinations4hd <- all_combinations[(all_combinations$all_true_row==TRUE),]
    all_combinations4hd_NA <- all_combinations[(all_combinations$all_true_row==FALSE),]
 
+    #calculate hamming distances
     thresholds <- c()
     if (length(cdrseqs)>0) {
         for (c in cdrseqs) {
@@ -214,6 +220,7 @@ BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=TRUE, CDR3=TRUE, J.ge
     }
     write.csv(all_combinations4hd, file.path(results_folder, "hammingdistances.csv"), quote=FALSE)
 
+    # determine which sequences are above the threshold
     all_combinations4hd_abovethresh <- all_combinations4hd[apply(all_combinations4hd[thresholds] > hammingthreshold, 1, all), ]
     final.hd <- rowMeans(all_combinations4hd[rownames(all_combinations4hd_abovethresh), thresholds ])
     all_comb_final <- cbind(all_combinations4hd_abovethresh[,c("Var1", "Var2")], final.hd )
@@ -254,6 +261,7 @@ BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=TRUE, CDR3=TRUE, J.ge
     dffinal[is.na(dffinal)] <- 0
     adj_matrix <- as.matrix(as.data.frame(dffinal))
 
+    # generate graph
     g <- graph_from_adjacency_matrix(adj_matrix, diag=FALSE, mode = "undirected", weighted = TRUE)
     if(isTRUE(graph.plot)) {
         png(file.path(results_folder, "graph.png"),width=8, height=8, units="in", res=500)
@@ -277,9 +285,11 @@ BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=TRUE, CDR3=TRUE, J.ge
    finalresults <- merge(totaldatafinal, hammingdistclonotypes, by.x="barcodev2", by.y="row.names")
    print(paste0("STATUS: number of unique clonotypes is ", length(unique(finalresults$hd.clonotypes))))
    contig.list_final <- split( finalresults , f = finalresults$sample_individual )
-    finalresults$CDR3.heavy_light.seq <- paste(finalresults$cdr3, finalresults$cdr3.light, sep="_")
+   # generate full table
+   finalresults$CDR3.heavy_light.seq <- paste(finalresults$cdr3, finalresults$cdr3.light, sep="_")
    write.csv(finalresults, file.path(results_folder, "finalresults.csv"), quote=FALSE, row.names=FALSE)
 
+    # generate counts table
     dfvdjcounts <- finalresults  %>% group_by(sample_individual, hd.clonotypes) %>%
     dplyr::summarise(count = n())
     clonotypeswithseqs <- finalresults  %>% group_by(hd.clonotypes, CDR3.heavy_light.seq) %>%
@@ -314,6 +324,7 @@ BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=TRUE, CDR3=TRUE, J.ge
 
 
 hamming_dist_cluster_plot <- function(dffinal, results_folder) {
+    # generate heatmap of hamming distances 
     dffinal[is.na(dffinal)] <- 0 
     dffinal <- as.matrix(data.frame(dffinal, check.names = FALSE))
     class(dffinal) <- "numeric"
@@ -344,6 +355,7 @@ hamming_dist_cluster_plot <- function(dffinal, results_folder) {
 }
 
 build_data_table <- function(totaldata, seqofinterest) {
+    # build table of heavy and light chain calls
     totaldatafinal <- c()
     for (b in unique(totaldata$barcodev2)) {
         tmp <- totaldata[totaldata$barcodev2==b, ]

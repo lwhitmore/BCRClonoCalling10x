@@ -12,7 +12,6 @@ BCR.CallClono.HD(
   J.gene = FALSE,
   chain = "both",
   hammingthreshold = 0.7,
-  CDR3threshwithFullGene = FALSE,
   cluster.plot = TRUE,
   graph.plot = FALSE,
   results_folder = getwd(),
