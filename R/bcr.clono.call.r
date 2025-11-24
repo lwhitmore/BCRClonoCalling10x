@@ -134,7 +134,7 @@ BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=TRUE, CDR3=TRUE, J.ge
     if (isTRUE(verbose)) {
         message("STATUS: build table of VDJ information")
     }
-    write.csv(totaldata, "totaltable.csv", quote=F, row.names=F)
+    write.csv(totaldata, file.path(results_folder, "totaltable.csv"), quote=F, row.names=F)
 
     #construct final table 
     totaldatafinal <- build_data_table(totaldata)
