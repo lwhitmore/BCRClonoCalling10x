@@ -18,7 +18,7 @@ library(BCRClonoCalling10x)
 --------------------------------
 
 ```R 
-results = BCR.CallClono.HD(contig.list,   seq="aa", V.gene=TRUE, CDR3=TRUE, J.gene=FALSE, chain="both",
+results = BCR.CallClono.HD(contig.list, seq="aa", V.gene=TRUE, CDR3=TRUE, J.gene=FALSE, chain="both",
      hammingthreshold=0.7, cluster.plot=TRUE,graph.plot=TRUE, results_folder=getwd(), verbose=FALSE)
 ```
 Input arguments 
