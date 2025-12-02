@@ -264,6 +264,9 @@ BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=TRUE, CDR3=TRUE, J.ge
     # generate graph
     g <- graph_from_adjacency_matrix(adj_matrix, diag=FALSE, mode = "undirected", weighted = TRUE)
     if(isTRUE(graph.plot)) {
+        if(isTRUE(verbose)) {
+            message("STATUS: Generating hamming distance graph plot")
+        }
         png(file.path(results_folder, "graph.png"),width=8, height=8, units="in", res=500)
         plot(g,
                 vertex.label = NA, #V(g)$name, # Use entity names as labels
