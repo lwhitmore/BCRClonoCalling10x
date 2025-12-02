@@ -283,7 +283,7 @@ BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=TRUE, CDR3=TRUE, J.ge
 
    colnames(hammingdistclonotypes) <- c("hd.clonotypes")
    finalresults <- merge(totaldatafinal, hammingdistclonotypes, by.x="barcodev2", by.y="row.names")
-   print(paste0("STATUS: number of unique clonotypes is ", length(unique(finalresults$hd.clonotypes))))
+   message(paste0("STATUS: number of unique clonotypes is ", length(unique(finalresults$hd.clonotypes))))
    contig.list_final <- split( finalresults , f = finalresults$sample_individual )
    # generate full table
    finalresults$CDR3.heavy_light.seq <- paste(finalresults$cdr3, finalresults$cdr3.light, sep="_")
