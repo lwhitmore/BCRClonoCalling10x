@@ -290,6 +290,17 @@ BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=TRUE, CDR3=TRUE, J.ge
    contig.list_final <- split( finalresults , f = finalresults$sample_individual )
    # generate full table
    finalresults$CDR3.heavy_light.seq <- paste(finalresults$cdr3, finalresults$cdr3.light, sep="_")
+   finalresults$complete_nt_seq_heavy <- paste0(finalresults$fwr1_nt,finalresults$cdr1_nt, 
+        finalresults$fwr2_nt, finalresults$cdr2_nt, finalresults$fwr3_nt,finalresults$cdr3_nt, finalresults$fwr4_nt)
+
+    finalresults$complete_aa_seq_heavy <- paste0(finalresults$fwr1, finalresults$cdr1, 
+        finalresults$fwr2 ,finalresults$cdr2, finalresults$fwr3, finalresults$cdr3, finalresults$fwr4)
+
+    finalresults$complete_nt_seq_light<- paste0(finalresults$fwr1_nt.light,finalresults$cdr1_nt.light, 
+        finalresults$fwr2_nt.light, finalresults$cdr2_nt.light, finalresults$fwr3_nt.light, finalresults$cdr3_nt.light, finalresults$fwr4_nt.light)
+
+    finalresults$complete_aa_seq_light <- paste0(finalresults$fwr1.light, finalresults$cdr1.light, 
+        finalresults$fwr2.light, finalresults$cdr2.light, finalresults$fwr3.light, finalresults$cdr3.light, finalresults$fwr4.light)
    write.csv(finalresults, file.path(results_folder, "finalresults.csv"), quote=FALSE, row.names=FALSE)
 
     # generate counts table
