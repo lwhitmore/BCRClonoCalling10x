@@ -290,6 +290,9 @@ BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=TRUE, CDR3=TRUE, J.ge
    contig.list_final <- split( finalresults , f = finalresults$sample_individual )
    # generate full table
    finalresults$CDR3.heavy_light.seq <- paste(finalresults$cdr3, finalresults$cdr3.light, sep="_")
+    finalresults$CDR3heavy.length <- nchar(finalresults$cdr3)
+    finalresults$CDR3light.length <- nchar(finalresults$cdr3.light)
+
    finalresults$complete_nt_seq_heavy <- paste0(finalresults$fwr1_nt,finalresults$cdr1_nt, 
         finalresults$fwr2_nt, finalresults$cdr2_nt, finalresults$fwr3_nt,finalresults$cdr3_nt, finalresults$fwr4_nt)
 
@@ -331,6 +334,16 @@ BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=TRUE, CDR3=TRUE, J.ge
     tmppivot <- as.data.frame(tmppivot)
     tmppivot$aa.CDR3.heavy_light.seq <-seq
     tmppivot <- tmppivot[rev(order(tmppivot$sum)),]
+    heavy <- c()
+    light<- c()
+    splitseqs <- strsplit(seq, "_")
+    for (i in splitseqs){
+        heavy<- c(heavy, nchar(i[1]))
+        light<- c(light, nchar(i[2]) )
+    }
+    tmppivot$CDR3heavy.length <- heavy
+    tmppivot$CDR3light.length <- light
+
     write.csv(tmppivot, file.path(results_folder, "clonotypecount.csv"), quote=FALSE)
     write.csv(clonotypeswithseqs,file.path(results_folder, "clonotypeCDR3sequences.csv"), quote=FALSE,row.names=FALSE)
    return(list("graph"=g, "BCRclonotypes"=contig.list_final))
