@@ -5,7 +5,9 @@
 #' @param seq type of sequence to use for clonotype calling (nt or aa) default is nt
 #' @param V.gene uses V gene to make clonotype calls (default is TRUE)
 #' @param J.gene uses J gene to make clonotype calls (default is FALSE)
-#' @param CDR3 uses CDR3 sequence to make clonotype calls (default is TRUE)
+#' @param fullgenecalc use full gene sequence to calculate hamming distance not individual parts (default is FALSE)
+#' @param genecalltest specifies that cells that are to be called in a clonotype have have the same heavy and light chain calls by cellranger (default is TRUE)
+#' @param CDR3.only uses CDR3 sequence to make clonotype calls (default is TRUE)
 #' @param chain use light, heavy or both chains to make clonotype (default is both)
 #' @param hammingthreshold threshold for which to group cells/sequences in the same clonotype (default =0.7)
 #' @param cluster.plot output hamming distance matrix plot 
@@ -27,7 +29,7 @@
 #' contig.list <- CallClonoHD(contig.listFromCellRanger)
 #' 
 
-BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=TRUE, CDR3=TRUE, J.gene=FALSE, chain="both",
+BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=FALSE, CDR3.only=TRUE, J.gene=FALSE, fullgenecalc=FALSE, genecalltest=TRUE, chain="both",
      hammingthreshold=0.7, cluster.plot=TRUE,graph.plot=FALSE, results_folder=getwd(), verbose=FALSE) {
 
     calculate_hamming_distance <-function(x) {#, all_combinationstmp, totaldatafinal, seqofinterest ) {
@@ -46,77 +48,71 @@ BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=TRUE, CDR3=TRUE, J.ge
     if (!(chain %in% c("heavy", "light", "both"))) {
         stop("ERROR: chain value needs to be heavy, light, or both")
     }
-
+    if (isTRUE(V.gene) & isTRUE(CDR3.only)) {
+        stop("ERROR: both V.gene and CDR3.only cannot both be true")
+    }
     # assign sequences to vector that we are interested in looking at 
-    cdrseqs <- c()
     seqofinterest <- c()
     geneseqs <- c()
     if (seq=="nt") {
         if (chain=="heavy" || chain=="both") {
-            if (isTRUE(V.gene)) {
-                seqofinterest <- c(seqofinterest, c("fwr1_nt", "cdr1_nt", "fwr2_nt", "cdr2_nt", "fwr3_nt"))
-                geneseqs <- c(geneseqs, c("fwr1_nt", "cdr1_nt", "fwr2_nt", "cdr2_nt", "fwr3_nt"))
+            if (isTRUE(CDR3.only)) {
+                seqofinterest <- c(seqofinterest, c("cdr3_nt"))
+                geneseqs <- c(geneseqs,  c("cdr3_nt"))
+            } else if (isTRUE(V.gene)) {
+                seqofinterest <- c(seqofinterest, c("fwr1_nt", "cdr1_nt", "fwr2_nt", "cdr2_nt", "fwr3_nt", "cdr3_nt"))
+                geneseqs <- c(geneseqs, c("fwr1_nt", "cdr1_nt", "fwr2_nt", "cdr2_nt", "fwr3_nt","cdr3_nt"))
             }
             if (isTRUE(J.gene)) {
                 seqofinterest <- c(seqofinterest, c("fwr4_nt"))
                 geneseqs <- c(geneseqs, c("fwr4_nt"))
             }
-            if (isTRUE(CDR3)) {
-                seqofinterest <- c(seqofinterest, c("cdr3_nt"))
-                cdrseqs <- c(cdrseqs,  c("cdr3_nt"))
-            }
         }
         if((chain=="light" || chain=="both")) {
-            if (isTRUE(V.gene)) {
-                seqofinterest <- c(seqofinterest, c("fwr1_nt.light", "cdr1_nt.light", "fwr2_nt.light", "cdr2_nt.light", "fwr3_nt.light"))
-                geneseqs <- c(geneseqs, c("fwr1_nt.light", "cdr1_nt.light", "fwr2_nt.light", "cdr2_nt.light", "fwr3_nt.light"))
+            if (isTRUE(CDR3.only)) {
+                seqofinterest <- c(seqofinterest, c("cdr3_nt.light"))
+                geneseqs <- c(geneseqs,  c("cdr3_nt.light"))
+           } else if (isTRUE(V.gene)) {
+                seqofinterest <- c(seqofinterest, c("fwr1_nt.light", "cdr1_nt.light", "fwr2_nt.light", "cdr2_nt.light", "fwr3_nt.light", "cdr3_nt.light"))
+                geneseqs <- c(geneseqs, c("fwr1_nt.light", "cdr1_nt.light", "fwr2_nt.light", "cdr2_nt.light", "fwr3_nt.light", "cdr3_nt.light"))
             }
             if (isTRUE(J.gene)) {
                 seqofinterest <- c(seqofinterest, c("fwr4_nt.light"))
                 geneseqs <- c(geneseqs, c("fwr4_nt.light"))
-
-            }
-            if (isTRUE(CDR3)) {
-                seqofinterest <- c(seqofinterest, c("cdr3_nt.light"))
-                cdrseqs <- c(cdrseqs,  c("cdr3_nt.light"))
-
            }
-        }
+       }
     } else {
         if (chain=="heavy" || chain=="both") {
-            if (isTRUE(V.gene)) {
-                seqofinterest <- c(seqofinterest, c("fwr1", "cdr1", "fwr2", "cdr2", "fwr3"))
-                geneseqs <- c(geneseqs, c("fwr1", "cdr1", "fwr2", "cdr2", "fwr3"))
+            if (isTRUE(CDR3.only)) {
+                seqofinterest <- c(seqofinterest, c("cdr3"))
+                geneseqs <- c(geneseqs,  c("cdr3"))
+            }else if (isTRUE(V.gene)) {
+                seqofinterest <- c(seqofinterest, c("fwr1", "cdr1", "fwr2", "cdr2", "fwr3", "cdr3"))
+                geneseqs <- c(geneseqs, c("fwr1", "cdr1", "fwr2", "cdr2", "fwr3", "cdr3"))
             }
             if (isTRUE(J.gene)) {
                 seqofinterest <- c(seqofinterest, c("fwr4"))
                 geneseqs <- c(geneseqs, c("fwr4"))
 
             }
-            if (isTRUE(CDR3)) {
-                seqofinterest <- c(seqofinterest, c("cdr3"))
-                cdrseqs <- c(cdrseqs,  c("cdr3"))
-
-            }
         }
         if((chain=="light" || chain=="both")) {
-            if (isTRUE(V.gene)) {
-                seqofinterest <- c(seqofinterest, c("fwr1.light", "cdr1.light", "fwr2.light", "cdr2.light", "fwr3.light"))
-                geneseqs <- c(geneseqs, c("fwr1.light", "cdr1.light", "fwr2.light", "cdr2.light", "fwr3.light"))
-
+            if (isTRUE(CDR3.only)) {
+                seqofinterest <- c(seqofinterest, c("cdr3.light"))
+                geneseqs <- c(geneseqs,  c("cdr3.light"))
+            } else if (isTRUE(V.gene)) {
+                seqofinterest <- c(seqofinterest, c("fwr1.light", "cdr1.light", "fwr2.light", "cdr2.light", "fwr3.light", "cdr3.light"))
+                geneseqs <- c(geneseqs, c("fwr1.light", "cdr1.light", "fwr2.light", "cdr2.light", "fwr3.light", "cdr3.light"))
             }
             if (isTRUE(J.gene)) {
                 seqofinterest <- c(seqofinterest, c("fwr4.light"))
                 geneseqs <- c(geneseqs, c("fwr4.light"))
-
-            }
-            if (isTRUE(CDR3)) {
-                seqofinterest <- c(seqofinterest, c("cdr3.light"))
-                cdrseqs <- c(cdrseqs,  c("cdr3.light"))
             }
         }
     }
+    #change variable for seqs of interest stopped 
     # compile all filtered tables into one table 
+
     totaldata <- c()
     for (n in names(contig.list)) {
         contig.list[[n]]$barcodev2 <- paste(n, contig.list[[n]]$barcode, sep="_")
@@ -163,19 +159,7 @@ BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=TRUE, CDR3=TRUE, J.ge
     x<- plyr::mapvalues(all_combinations$Var2,  as.character(totaldatafinal$barcodev2),totaldatafinal[,"totalvgene"])
     all_combinations[,"totalgene.barcode2"] <- x
     calls <- c()
-    if (length(cdrseqs)>0) {
-        for (c in cdrseqs) {
-            x<- plyr::mapvalues(all_combinations$Var1,  as.character(totaldatafinal$barcodev2),totaldatafinal[,c])
-            all_combinations[,paste0(c,".barcode1")] <- x
-            all_combinations[,paste0(c,".barcode1.length")] <- nchar(as.character(x))
-            x<- plyr::mapvalues(all_combinations$Var2,  as.character(totaldatafinal$barcodev2),totaldatafinal[,c])
-            all_combinations[,paste0(c,".barcode2")] <- x
-            all_combinations[,paste0(c,".barcode2.length")] <- nchar(as.character(x))
-            all_combinations[, paste0(c, "lengthcall")] = all_combinations[,paste0(c,".barcode1.length")]==all_combinations[,paste0(c,".barcode2.length")]
-            calls <- c(calls,paste0(c, "lengthcall") )
-        }
-    } 
-    if (length(geneseqs)>0) {
+    if (!isTRUE(fullgenecalc)) {
         for (g in geneseqs) {
             x<- plyr::mapvalues(all_combinations$Var1,  as.character(totaldatafinal$barcodev2),totaldatafinal[,g])
             all_combinations[,paste0(g,".barcode1")] <- x
@@ -186,37 +170,44 @@ BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=TRUE, CDR3=TRUE, J.ge
             all_combinations[, paste0(g, "lengthcall")] = all_combinations[,paste0(g,".barcode1.length")]==all_combinations[,paste0(g,".barcode2.length")]
             calls <- c(calls,paste0(g, "lengthcall") )
         }
+    } else {
+        x<- plyr::mapvalues(all_combinations$Var1,  as.character(totaldatafinal$barcodev2),paste(totaldatafinal[,geneseqs], collapse=""))
+        all_combinations[,paste0("fullseq_",".barcode1")] <- x
+        all_combinations[,paste0("fullseq_",".barcode1.length")] <- nchar(as.character(x))
+        x<- plyr::mapvalues(all_combinations$Var2,  as.character(totaldatafinal$barcodev2),paste(totaldatafinal[,geneseqs], collapse=""))
+        all_combinations[,paste0("fullseq_",".barcode2")] <- x
+        all_combinations[,paste0("fullseq_",".barcode2.length")] <- nchar(as.character(x))
+        all_combinations[, paste0("fullseq_", "lengthcall")] = all_combinations[,paste0("fullseq_",".barcode1.length")]==all_combinations[,paste0("fullseq_",".barcode2.length")]
+        calls <- c(calls,paste0("fullseq_", "lengthcall") )
     }
-
    # extract combinations that need to have hamming distance calculated for 
-   all_combinations$genecall <- all_combinations$totalgene.barcode1==all_combinations$totalgene.barcode2
-   calls <- c(calls, "genecall")
+    if (isTRUE(genecalltest)) { 
+       all_combinations$genecall <- all_combinations$totalgene.barcode1==all_combinations$totalgene.barcode2
+       calls <- c(calls, "genecall")
+    }
    all_combinations$all_true_row <- apply(all_combinations[,calls ], 1, all)
    all_combinations4hd <- all_combinations[(all_combinations$all_true_row==TRUE),]
    all_combinations4hd_NA <- all_combinations[(all_combinations$all_true_row==FALSE),]
 
     #calculate hamming distances
-    thresholds <- c()
-    if (length(cdrseqs)>0) {
-        for (c in cdrseqs) {
-            if (isTRUE(verbose)) {
-                message("STATUS: Calculating hamming distance for ",c)
+    if (!isTRUE(fullgenecalc)) {
+        if (length(geneseqs)>0) {
+            for (g in geneseqs) {
+                if (isTRUE(verbose)) {
+                    message("STATUS: Calculating hamming distance for ",g)
+                }
+                totalhd = apply(all_combinations4hd[c(paste0(g,".barcode1"), paste0(g,".barcode2"))], 1, calculate_hamming_distance)
+                all_combinations4hd[, paste0(g,".hd")] <- totalhd
+                thresholds <- c(thresholds,paste0(g,".hd") )
             }
-            totalhd = apply(all_combinations4hd[c(paste0(c,".barcode1"), paste0(c,".barcode2"))], 1, calculate_hamming_distance)
-            all_combinations4hd[, paste0(c,".hd")] <- totalhd
-            thresholds <- c(thresholds,paste0(c,".hd") )
         }
-    }
-
-    if (length(geneseqs)>0) {
-        for (g in geneseqs) {
-            if (isTRUE(verbose)) {
-                message("STATUS: Calculating hamming distance for ",g)
-            }
-            totalhd = apply(all_combinations4hd[c(paste0(g,".barcode1"), paste0(g,".barcode2"))], 1, calculate_hamming_distance)
-            all_combinations4hd[, paste0(g,".hd")] <- totalhd
-            thresholds <- c(thresholds,paste0(c,".hd") )
+    } else {
+        if (isTRUE(verbose)) {
+            message("STATUS: Calculating hamming distance for ","fullseq")
         }
+        totalhd = apply(all_combinations4hd[c(paste0("fullseq_",".barcode1"), paste0("fullseq_",".barcode2"))], 1, calculate_hamming_distance)
+        all_combinations4hd[, paste0("fullseq",".hd")] <- totalhd
+        thresholds <- c(thresholds,paste0(g,".hd") )
     }
     write.csv(all_combinations4hd, file.path(results_folder, "hammingdistances.csv"), quote=FALSE)
 
