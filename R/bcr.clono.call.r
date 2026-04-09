@@ -171,10 +171,11 @@ BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=FALSE, CDR3.only=TRUE
             calls <- c(calls,paste0(g, "lengthcall") )
         }
     } else {
-        x<- plyr::mapvalues(all_combinations$Var1,  as.character(totaldatafinal$barcodev2),paste(totaldatafinal[,geneseqs], collapse=""))
+        totaldatafinal$seqofinterest <- do.call(paste, c(totaldatafinal[,geneseqs], sep = ""))
+        x<- plyr::mapvalues(all_combinations$Var1,  as.character(totaldatafinal$barcodev2),totaldatafinal[,"seqofinterest"])
         all_combinations[,paste0("fullseq_",".barcode1")] <- x
         all_combinations[,paste0("fullseq_",".barcode1.length")] <- nchar(as.character(x))
-        x<- plyr::mapvalues(all_combinations$Var2,  as.character(totaldatafinal$barcodev2),paste(totaldatafinal[,geneseqs], collapse=""))
+        x<- plyr::mapvalues(all_combinations$Var2,  as.character(totaldatafinal$barcodev2),totaldatafinal[,"seqofinterest"])
         all_combinations[,paste0("fullseq_",".barcode2")] <- x
         all_combinations[,paste0("fullseq_",".barcode2.length")] <- nchar(as.character(x))
         all_combinations[, paste0("fullseq_", "lengthcall")] = all_combinations[,paste0("fullseq_",".barcode1.length")]==all_combinations[,paste0("fullseq_",".barcode2.length")]
@@ -185,9 +186,13 @@ BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=FALSE, CDR3.only=TRUE
        all_combinations$genecall <- all_combinations$totalgene.barcode1==all_combinations$totalgene.barcode2
        calls <- c(calls, "genecall")
     }
-   all_combinations$all_true_row <- apply(all_combinations[,calls ], 1, all)
-   all_combinations4hd <- all_combinations[(all_combinations$all_true_row==TRUE),]
-   all_combinations4hd_NA <- all_combinations[(all_combinations$all_true_row==FALSE),]
+    if (length(calls)> 1) {
+       all_combinations$all_true_row <- apply(all_combinations[,calls ], 1, all)
+    } else {
+        all_combinations$all_true_row <- all_combinations[,calls ]
+    }
+    all_combinations4hd <- all_combinations[(all_combinations$all_true_row==TRUE),]
+    all_combinations4hd_NA <- all_combinations[(all_combinations$all_true_row==FALSE),]
 
     #calculate hamming distances
     thresholds <- c()
@@ -208,13 +213,17 @@ BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=FALSE, CDR3.only=TRUE
         }
         totalhd = apply(all_combinations4hd[c(paste0("fullseq_",".barcode1"), paste0("fullseq_",".barcode2"))], 1, calculate_hamming_distance)
         all_combinations4hd[, paste0("fullseq",".hd")] <- totalhd
-        thresholds <- c(thresholds,paste0(g,".hd") )
+        thresholds <- c(thresholds,paste0("fullseq",".hd") )
     }
     write.csv(all_combinations4hd, file.path(results_folder, "hammingdistances.csv"), quote=FALSE)
 
     # determine which sequences are above the threshold
     all_combinations4hd_abovethresh <- all_combinations4hd[apply(all_combinations4hd[thresholds] > hammingthreshold, 1, all), ]
-    final.hd <- rowMeans(all_combinations4hd[rownames(all_combinations4hd_abovethresh), thresholds ])
+    if (length(thresholds)>1) {
+        final.hd <- rowMeans(all_combinations4hd[rownames(all_combinations4hd_abovethresh), thresholds ])
+    } else {
+        final.hd <- all_combinations4hd[rownames(all_combinations4hd_abovethresh), thresholds ]
+    }
     all_comb_final <- cbind(all_combinations4hd_abovethresh[,c("Var1", "Var2")], final.hd )
     tmp <- all_combinations4hd[!(rownames(all_combinations4hd) %in% rownames(all_combinations4hd_abovethresh)),c("Var1", "Var2")]
     tmp$final.hd <- rep(NA, nrow(tmp))
