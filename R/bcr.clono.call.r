@@ -190,6 +190,7 @@ BCR.CallClono.HD <- function(contig.list, seq="aa", V.gene=FALSE, CDR3.only=TRUE
    all_combinations4hd_NA <- all_combinations[(all_combinations$all_true_row==FALSE),]
 
     #calculate hamming distances
+    thresholds <- c()
     if (!isTRUE(fullgenecalc)) {
         if (length(geneseqs)>0) {
             for (g in geneseqs) {
